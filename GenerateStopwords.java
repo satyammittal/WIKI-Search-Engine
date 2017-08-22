@@ -17,7 +17,8 @@ class values{
 public class GenerateStopwords {
    public static HashMap<String,Integer> tf=new HashMap<String,Integer>();
    public static HashMap<String,Integer> idf=new HashMap<String,Integer>(); 
-   public static HashMap<String,Integer> mat=new HashMap<String,Integer>(); 
+   public static HashMap<String,Integer> mat=new HashMap<String,Integer>();
+
    private Set<String> stopwords;
    public void GenerateStopwords(){
 
@@ -25,10 +26,10 @@ public class GenerateStopwords {
    public static void main(String[] args){
 
    }
-   public void Generatefromxml(String[] args) {
+   public void Generatefromxml(String file) {
 
       try {
-         File inputFile = new File("wiki-search-small.xml");
+         File inputFile = new File(file);
          SAXParserFactory factory = SAXParserFactory.newInstance();
          SAXParser saxParser = factory.newSAXParser();
          UserHandler2 userhandler = new UserHandler2();
@@ -173,7 +174,8 @@ class UserHandler2 extends DefaultHandler {
             {
                tf.put(p,1);
             }
-            else{
+            else
+            {
                Integer r = tf.get(p)+1;
                tf.put(p,r);
             }

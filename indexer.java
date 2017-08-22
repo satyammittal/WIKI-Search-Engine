@@ -20,15 +20,16 @@ public class indexer {
    public static HashMap<String,Integer> tf=new HashMap<String,Integer>();
    public static HashMap<String,Integer> idf=new HashMap<String,Integer>(); 
    public static HashMap<String,Integer> mat=new HashMap<String,Integer>(); 
-   public static TreeMap<String, List<Pair<Integer, String>>> indexer;
+   public static TreeMap<String, SortedSet<Pair<Integer, String>>> indexer;
+   public static String valcategory="$1";
    public static StringBuffer bodyText = new StringBuffer("");;
    public static void main(String[] args) {
 
      try {
          Instant start = Instant.now();
-         File inputFile = new File("wiki-search-small.xml");
+         File inputFile = new File(args[0]);
          SAXParserFactory factory = SAXParserFactory.newInstance();
-         indexer = new TreeMap<String, List<Pair<Integer, String>>>();
+         indexer = new TreeMap<String, SortedSet<Pair<Integer, String>>>();
          SAXParser saxParser = factory.newSAXParser();
          UserHandler userhandler = new UserHandler();
          userhandler.sample(tf, idf, indexer, bodyText);
@@ -42,7 +43,7 @@ public class indexer {
             mat.put((String)m.getKey(),s3);
          }  
       Map<String,Integer> mat_sorted = sortByValue(mat);
-      File statText = new File("indexfile5");
+      File statText = new File(args[1]);
       FileOutputStream is = new FileOutputStream(statText);
       OutputStreamWriter osw = new OutputStreamWriter(is);    
       Writer w = new BufferedWriter(osw);
@@ -51,25 +52,36 @@ public class indexer {
        //
                   ////System.out.println(m.getKey()+" "+m.getValue());  
       //}
-
-      for(Map.Entry<String, List<Pair<Integer, String>>> entry : indexer.entrySet()) {
+      String key2 = "%$%";
+      boolean firstline = true;
+      for(Map.Entry<String, SortedSet<Pair<Integer, String>>> entry : indexer.entrySet()) {
          String key = entry.getKey();
-         List<Pair<Integer, String>> pr2 = entry.getValue();
-         w.write(key + "|");
-         //for(Map.Entry<Integer, List<Pair<Integer, String>>> entry2 : value.entrySet()) 
+         valcategory = key;
+         if(!firstline && keycheck(key,key2)==false)
+            w.write("\n");
+         firstline=false; 
+         SortedSet<Pair<Integer, String>> pr2 = entry.getValue();
+         w.write(valcategory + "|");
+         //for(Map.Entry<Integer, SortedSet<Pair<Integer, String>>> entry2 : value.entrySet()) 
          //{
             //Integer doc = entry2.getKey();
             //w.write(doc.toString() + ":");
-           // List<Pair<Integer, String>> pr2 = entry.getValue();
+           // SortedSet<Pair<Integer, String>> pr2 = entry.getValue();
+            boolean ft=true;
+            String dq="";
             for (Pair<Integer, String> pr:pr2)
             {
                Integer in = pr.getFirst();
                String qr = pr.getSecond();
-               w.write(in.toString()+","); 
+               if(!ft)
+                  dq=",";
+               w.write(dq+in.toString()+"-"+qr); 
+              ft=false;
             }
+            key2=key; 
           //   w.write(";"); 
          //}
-               w.write("\n"); 
+              
       }
       w.close();
       Instant end = Instant.now();
@@ -80,6 +92,47 @@ public class indexer {
          e.printStackTrace();
       }
    }
+   public static boolean keycheck(String key,String key2){
+    String PATTERN_TOKEN = "$";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         boolean fd=true;
+         String tg=".";
+        String fkey=".",fkey2="..";
+         HashSet<String> parts2 = new HashSet<String>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(key,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String sr= normalTokenizer.nextToken().trim();
+              if(fd)
+              {
+                fkey=sr;
+              }
+              else{
+                tg=sr;
+              }
+              fd=false;
+         }
+         fd=true;
+         final StringTokenizer normalTokenizer2 = new StringTokenizer(key2,PATTERN_TOKEN);
+            while(normalTokenizer2.hasMoreTokens()){
+             String sr= normalTokenizer2.nextToken().trim();
+           
+              if(fd)
+              {
+                fkey2=sr;
+              }
+              fd=false;
+         }
+         if(fkey.equalsIgnoreCase(fkey2))
+         {
+          valcategory="|$" + tg;
+          return true;
+         }  
+         else
+         {
+          return false;
+         }
+   }
+   
     private static Map<String, Integer> sortByValue(Map<String, Integer> unsortMap) {
 
         // 1. Convert Map to List of Map
@@ -117,21 +170,20 @@ class UserHandler extends DefaultHandler {
    HashMap<String,Integer> tf;
    HashMap<String,Integer> idf;
    StringBuffer buffer;
-   TreeMap<String, List<Pair<Integer, String>>> index;
+   TreeMap<String, SortedSet<Pair<Integer, String>>> index;
    Stemmer stemf;
    Integer id=-1;
    Integer numberword = 0;
    GenerateStopwords stopw = new GenerateStopwords();
    int counter=1;
-   public void sample(HashMap<String,Integer> tf,HashMap<String,Integer> idf,TreeMap<String, List<Pair<Integer, String>>> indexer, StringBuffer bfr){
+   public void sample(HashMap<String,Integer> tf,HashMap<String,Integer> idf,TreeMap<String, SortedSet<Pair<Integer, String>>> indexer, StringBuffer bfr){
       this.tf=tf;
       this.idf=idf;
       this.index=indexer;
       this.buffer=bfr;
       stemf = new Stemmer();
-      stopw.generatefromfile("english.txt");
-      System.out.println("hello");
-
+      stopw.generatefromfile("stopwords.txt");
+    
    }
    @Override
    public void startElement(String uri, 
@@ -145,6 +197,7 @@ class UserHandler extends DefaultHandler {
       if (qName.equalsIgnoreCase("revision")) {
          isRevision = true;
       } else if (qName.equalsIgnoreCase("title")) {
+           buffer = new StringBuffer();
          isTitle = true;
       } else if (qName.equalsIgnoreCase("text")) {
            buffer = new StringBuffer();
@@ -174,22 +227,28 @@ class UserHandler extends DefaultHandler {
       else if(tag.equalsIgnoreCase("title"))
       {
          isTitle = false;
-      }
-      else if(tag.equalsIgnoreCase("text"))
-      {
-         isBody = false;
          String s2 = buffer.toString();
          s2=s2.toLowerCase();
-        // //System.out.println(s2);
+         extractLinks(s2);
+         extractCategories(s2);
+         extractReferences(s2);
+         extractInfoBox(s2);
+         s2=deleteCitation(s2);
          String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
          //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
-         List<String> parts2 = new ArrayList<String>();
+         HashSet<String> parts2 = new HashSet<String>();
+         HashMap<String, Integer> countw= new HashMap<String,Integer>();
          final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
             while(normalTokenizer.hasMoreTokens()){
-               parts2.add(normalTokenizer.nextToken().trim());
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
             }
-        //System.out.println(parts2);
-        // String[] parts2 = s1.split("\\s+");
          Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
          List<String> parts = new ArrayList<String>();
        for(String p:parts2)
@@ -198,28 +257,100 @@ class UserHandler extends DefaultHandler {
          if (m.find())
             parts.add(p);
          }
+
          ////System.out.println(parts.toString());
          for(String p:parts){
             String p2=p;
             stemf.add(p.toCharArray(), p.length());
             stemf.stem();
             p = stemf.toString();
-            
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
             {
+              String p3=p;
+               p = p + "$T";
               //System.out.println(p+ " ");
                if(!index.containsKey(p)) 
             {
-                  Pair<Integer,String> r = new Pair<Integer,String>(id,"B");
-                  List<Pair<Integer,String>> ls = new LinkedList<Pair<Integer,String>>();
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
                   ls.add(r);
                  // index.put(id,ls);
                   index.put(p,ls);
                }
                else{
               
-                     List<Pair<Integer,String>> ls = index.get(p);
-                     Pair<Integer,String> r = new Pair<Integer,String>(numberword,"B");
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                     
+                     ls.add(r);
+                  //   f.put(id,ls);
+                     index.put(p,ls);
+                  }
+               }
+                numberword++;
+                   
+            }
+      }
+      else if(tag.equalsIgnoreCase("text"))
+      {
+     
+         isBody = false;
+         String s2 = buffer.toString();
+         s2=s2.toLowerCase();
+         extractLinks(s2);
+         extractCategories(s2);
+         extractReferences(s2);
+         extractInfoBox(s2);
+         s2=deleteCitation(s2);
+         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         HashSet<String> parts2 = new HashSet<String>();
+         HashMap<String, Integer> countw= new HashMap<String,Integer>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
+            }
+         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
+         List<String> parts = new ArrayList<String>();
+       for(String p:parts2)
+         {
+            Matcher m = rp.matcher(p);
+         if (m.find())
+            parts.add(p);
+         }
+
+         ////System.out.println(parts.toString());
+         for(String p:parts){
+            String p2=p;
+            stemf.add(p.toCharArray(), p.length());
+            stemf.stem();
+            p = stemf.toString();
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            {
+              String p3=p;
+               p = p + "$B";
+              //System.out.println(p+ " ");
+               if(!index.containsKey(p)) 
+            {
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
+                  ls.add(r);
+                 // index.put(id,ls);
+                  index.put(p,ls);
+               }
+               else{
+              
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
                      
                      ls.add(r);
                   //   f.put(id,ls);
@@ -237,6 +368,8 @@ class UserHandler extends DefaultHandler {
    public void characters(char ch[], int start, int length) throws SAXException {
       set=new HashSet<String>();
       if (isTitle) {
+         String s2 = new String(ch, start, length);
+         buffer.append(s2);
        //  ////System.out.println("Title: " 
          //   + new String(ch, start, length));
       } else if (isBody) {
@@ -253,5 +386,343 @@ class UserHandler extends DefaultHandler {
         
       }
    }
+
+   public void extractLinks(final String content){
+      //Tokenize the link. [[user innovation]]
+      final Pattern linkPattern = Pattern.compile("\\[\\[(.*?)\\]\\]", Pattern.MULTILINE);
+      final Matcher matcher = linkPattern.matcher(content);
+      while(matcher.find()) {
+         final String [] match = matcher.group(1).split("\\|");
+         if(match == null || match.length == 0) continue;
+         final String link = match[0];
+         if(link.contains(":") == false) {
+         String s2=link.toLowerCase();
+         //System.out.println(s2);
+         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         HashSet<String> parts2 = new HashSet<String>();
+          HashMap<String, Integer> countw= new HashMap<String,Integer>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
+            }
+         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
+         List<String> parts = new ArrayList<String>();
+       for(String p:parts2)
+         {
+            Matcher m = rp.matcher(p);
+         if (m.find())
+            parts.add(p);
+         }
+         ////System.out.println(parts.toString());
+         for(String p:parts){
+            String p2=p;
+            stemf.add(p.toCharArray(), p.length());
+            stemf.stem();
+            p = stemf.toString();
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            {
+               String p3=p;
+               p = p + "$L";
+              //System.out.println(p+ " ");
+               if(!index.containsKey(p)) 
+            {
+
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
+                  ls.add(r);
+                 // index.put(id,ls);
+                  index.put(p,ls);
+               }
+               else{
+              
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                     
+                     ls.add(r);
+                  //   f.put(id,ls);
+                     index.put(p,ls);
+                  }
+               }
+                   
+            }
+         }
+      }
+   }
+   
+   public void extractCategories(final String content){
+      //Tokenize the categories
+      final Pattern categoryPattern = Pattern.compile("\\[\\[category:(.*?)\\]\\]", Pattern.MULTILINE);
+      final Matcher matcher = categoryPattern.matcher(content);
+      while(matcher.find()) {
+         final String [] match = matcher.group(1).split("\\|");
+         String s2=match[0].toLowerCase();
+         //System.out.println(s2);
+         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         HashSet<String> parts2 = new HashSet<String>();
+          HashMap<String, Integer> countw= new HashMap<String,Integer>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
+            }
+         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
+         List<String> parts = new ArrayList<String>();
+       for(String p:parts2)
+         {
+            Matcher m = rp.matcher(p);
+         if (m.find())
+            parts.add(p);
+         }
+         ////System.out.println(parts.toString());
+         for(String p:parts){
+            String p2=p;
+            stemf.add(p.toCharArray(), p.length());
+            stemf.stem();
+            p = stemf.toString();
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            {
+              String p3=p;
+               p = p + "$C";
+              //System.out.println(p+ " ");
+               if(!index.containsKey(p)) 
+            {
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
+                  ls.add(r);
+                 // index.put(id,ls);
+                  index.put(p,ls);
+               }
+               else{
+              
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                     
+                     ls.add(r);
+                  //   f.put(id,ls);
+                     index.put(p,ls);
+                  }
+               }
+            }
+      //   extractToken(match[0],'C');
+      }
+   }
+   
+   public void extractInfoBox(final String content){
+      //Tokenize the infobox.
+      final String infoBoxPatterm = "{{infobox";
+      
+      //Find the start pos and end pos of info box.
+       int startPos = content.indexOf(infoBoxPatterm);
+       if(startPos < 0) return ;
+       int bracketCount = 2;
+       int endPos = startPos + infoBoxPatterm.length();
+       for(; endPos < content.length(); endPos++) {
+         switch(content.charAt(endPos)) {
+           case '}':
+             bracketCount--;
+             break;
+           case '{':
+             bracketCount++;
+             break;
+           default:
+         }
+         if(bracketCount == 0) break;
+       }
+       if(endPos+1 >= content.length()) return;
+
+       //Filter the infobox
+       String infoBoxText = content.substring(startPos, endPos+1);
+       infoBoxText = deleteCitation(infoBoxText);      
+       infoBoxText = infoBoxText.replaceAll("&gt;", ">");
+       infoBoxText = infoBoxText.replaceAll("&lt;", "<");
+       infoBoxText = infoBoxText.replaceAll("<ref.*?>.*?</ref>", " ");
+       infoBoxText = infoBoxText.replaceAll("</?.*?>", " ");
+      
+        String s2=infoBoxText.toLowerCase();
+         //System.out.println(s2);
+         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         HashSet<String> parts2 = new HashSet<String>();
+          HashMap<String, Integer> countw= new HashMap<String,Integer>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
+            }
+         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
+         List<String> parts = new ArrayList<String>();
+       for(String p:parts2)
+         {
+            Matcher m = rp.matcher(p);
+         if (m.find())
+            parts.add(p);
+         }
+         ////System.out.println(parts.toString());
+         for(String p:parts){
+            String p2=p;
+            stemf.add(p.toCharArray(), p.length());
+            stemf.stem();
+            p = stemf.toString();
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            {
+              String p3=p;
+               p = p + "$I";
+              //System.out.println(p+ " ");
+               if(!index.containsKey(p)) 
+            {
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
+                  ls.add(r);
+                 // index.put(id,ls);
+                  index.put(p,ls);
+               }
+               else{
+              
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                     
+                     ls.add(r);
+                  //   f.put(id,ls);
+                     index.put(p,ls);
+                  }
+               }
+            }
+   }
+   
+   public String deleteCitation(final String content) {
+      //Deletes the citation from the content.
+      final String CITE_PATTERN = "{{cite";
+      
+      //Find the start pos and end pos of citation.
+       int startPos = content.indexOf(CITE_PATTERN);
+       if(startPos < 0) return content;
+       int bracketCount = 2;
+       int endPos = startPos + CITE_PATTERN.length();
+       for(; endPos < content.length(); endPos++) {
+         switch(content.charAt(endPos)) {
+           case '}':
+             bracketCount--;
+             break;
+           case '{':
+             bracketCount++;
+             break;
+           default:
+         }
+         if(bracketCount == 0) break;
+       }
+       
+       //Discard the citation and search for remaining citations.
+       final String text = content.substring(0, startPos-1) + content.substring(endPos);
+       return deleteCitation(text); 
+   }
+   
+   public String extractReferences(final String content) {
+      //Extracts the citation from the content.
+      final String CITE_PATTERN = "{{cite";
+      
+      //Find the start pos and end pos of citation.
+       int startPos = content.indexOf(CITE_PATTERN);
+       if(startPos < 0) return content;
+       int bracketCount = 2;
+       int endPos = startPos + CITE_PATTERN.length();
+       for(; endPos < content.length(); endPos++) {
+         switch(content.charAt(endPos)) {
+           case '}':
+             bracketCount--;
+             break;
+           case '{':
+             bracketCount++;
+             break;
+           default:
+         }
+         if(bracketCount == 0) break;
+       }
+       
+       //Extract the citation and search for remaining citations.
+       //extractToken(content.substring(startPos, endPos),'R');
+      String s2=content.substring(startPos, endPos);
+         //System.out.println(s2);
+         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
+         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
+         HashSet<String> parts2 = new HashSet<String>();
+          HashMap<String, Integer> countw= new HashMap<String,Integer>();
+         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
+            while(normalTokenizer.hasMoreTokens()){
+              String nk=normalTokenizer.nextToken().trim();
+               parts2.add(nk);
+               if(countw.get(nk)==null){
+                  countw.put(nk,1);
+               }
+               else{
+                  countw.put(nk,countw.get(nk)+1);
+               }
+            }
+         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
+         List<String> parts = new ArrayList<String>();
+       for(String p:parts2)
+         {
+            Matcher m = rp.matcher(p);
+         if (m.find())
+            parts.add(p);
+         }
+         ////System.out.println(parts.toString());
+         for(String p:parts){
+            String p2=p;
+            stemf.add(p.toCharArray(), p.length());
+            stemf.stem();
+            p = stemf.toString();
+          
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            {
+              String p3=p;
+               p = p + "$R";
+              //System.out.println(p+ " ");
+               if(!index.containsKey(p)) 
+            {
+                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
+                  ls.add(r);
+                 // index.put(id,ls);
+                  index.put(p,ls);
+               }
+               else{
+              
+                     SortedSet<Pair<Integer,String>> ls = index.get(p);
+                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
+                     
+                     ls.add(r);
+                  //   f.put(id,ls);
+                     index.put(p,ls);
+                  }
+               }
+            }
+       final String text = content.substring(0, startPos-1) + content.substring(endPos);
+       return extractReferences(text); 
+   }
+
 }
 
