@@ -15,7 +15,6 @@ import java.time.Instant;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 import java.util.regex.Pattern;
-
 public class indexer {
    public static HashMap<String,Integer> tf=new HashMap<String,Integer>();
    public static HashMap<String,Integer> idf=new HashMap<String,Integer>(); 
@@ -23,7 +22,7 @@ public class indexer {
    public static TreeMap<String, SortedSet<Pair<Integer, String>>> indexer;
    public static String valcategory="$1";
    public static StringBuffer bodyText = new StringBuffer("");;
-   public static void main(String[] args) {
+   public static void main(String[] args) throws Exception {
 
      try {
          Instant start = Instant.now();
@@ -52,16 +51,27 @@ public class indexer {
        //
                   ////System.out.println(m.getKey()+" "+m.getValue());  
       //}
+      if(indexer.size()!=0)
+            {
+              try {
+                SPIMI_ALGO.createblock(indexer);
+              } catch (IOException e) {
+                e.printStackTrace();
+              }
+                indexer.clear();
+            }
+        SPIMI_ALGO.mergeblocks();
       String key2 = "%$%";
       boolean firstline = true;
       for(Map.Entry<String, SortedSet<Pair<Integer, String>>> entry : indexer.entrySet()) {
          String key = entry.getKey();
          valcategory = key;
-         if(!firstline && keycheck(key,key2)==false)
+         //if(!firstline && keycheck(key,key2)==false)
+          if(!firstline)
             w.write("\n");
          firstline=false; 
          SortedSet<Pair<Integer, String>> pr2 = entry.getValue();
-         w.write(valcategory + "|");
+         w.write(valcategory + ":");
          //for(Map.Entry<Integer, SortedSet<Pair<Integer, String>>> entry2 : value.entrySet()) 
          //{
             //Integer doc = entry2.getKey();
@@ -189,10 +199,6 @@ class UserHandler extends DefaultHandler {
    public void startElement(String uri, 
    String localName, String qName, Attributes attributes) throws SAXException {
       counter++;
-      if(counter==2) {
-            // TODO: Whatever should happen when condition is reached
-         return;
-        }
    //      ////System.out.println("Roll No : " + qName);
       if (qName.equalsIgnoreCase("revision")) {
          isRevision = true;
@@ -291,10 +297,19 @@ class UserHandler extends DefaultHandler {
                 numberword++;
                    
             }
+            if(index.size()>=500000)
+            {
+              try {
+                SPIMI_ALGO.createblock(index);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+                index.clear();
+            }
       }
       else if(tag.equalsIgnoreCase("text"))
       {
-     
+        //System.out.println(String.valueOf(index.size()));
          isBody = false;
          String s2 = buffer.toString();
          s2=s2.toLowerCase();
@@ -334,7 +349,7 @@ class UserHandler extends DefaultHandler {
             stemf.stem();
             p = stemf.toString();
           
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
             {
               String p3=p;
                p = p + "$B";
@@ -359,6 +374,15 @@ class UserHandler extends DefaultHandler {
                }
                 numberword++;
                    
+            }
+             if(index.size()>=500000)
+            {
+              try {
+                SPIMI_ALGO.createblock(index);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+                index.clear();
             }
          ////System.out.println(String.valueOf(id));
       }
@@ -428,7 +452,7 @@ class UserHandler extends DefaultHandler {
             stemf.stem();
             p = stemf.toString();
           
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
             {
                String p3=p;
                p = p + "$L";
@@ -496,7 +520,7 @@ class UserHandler extends DefaultHandler {
             stemf.stem();
             p = stemf.toString();
           
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
             {
               String p3=p;
                p = p + "$C";
@@ -634,10 +658,14 @@ class UserHandler extends DefaultHandler {
          }
          if(bracketCount == 0) break;
        }
-       
+             String soltxt = "";
+        if(content!=null && startPos>=1 && endPos>=0)
+       {
+        final String text = content.substring(0, startPos-1) + content.substring(endPos);
+        soltxt = text;
+      }
        //Discard the citation and search for remaining citations.
-       final String text = content.substring(0, startPos-1) + content.substring(endPos);
-       return deleteCitation(text); 
+       return deleteCitation(soltxt); 
    }
    
    public String extractReferences(final String content) {
@@ -696,7 +724,7 @@ class UserHandler extends DefaultHandler {
             stemf.stem();
             p = stemf.toString();
           
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
+            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
             {
               String p3=p;
                p = p + "$R";
@@ -720,8 +748,13 @@ class UserHandler extends DefaultHandler {
                   }
                }
             }
-       final String text = content.substring(0, startPos-1) + content.substring(endPos);
-       return extractReferences(text); 
+            String soltxt = "";
+        if(content!=null && startPos>=1 && endPos>=0)
+       {
+        final String text = content.substring(0, startPos-1) + content.substring(endPos);
+        soltxt = text;
+      }
+       return extractReferences(soltxt); 
    }
 
 }
