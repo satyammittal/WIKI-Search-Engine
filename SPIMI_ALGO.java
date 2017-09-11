@@ -30,6 +30,9 @@ public class SPIMI_ALGO {
     static String word2 ;
     static String value1 ;
 	static String value2 ;
+   public static void main(String[] args) throws Exception {
+    mergeblocks();
+  }
 	public static void createblock (TreeMap<String, SortedSet<Pair<Integer, String>>> indexer) throws Exception
 	{
 		long curTime=System.currentTimeMillis();

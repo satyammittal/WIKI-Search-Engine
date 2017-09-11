@@ -49,8 +49,11 @@ public class WikiSearch {
 	public static void main(final String[] argv) throws Exception {
 		//Main class that takes the file name as a command line argument.
 		BufferedReader reader=new BufferedReader(new InputStreamReader(System.in));
-		fetchPostingList g = new fetchPostingList("temp/block-000.txt");
+		fetchPostingList g = new fetchPostingList("temp/block-0000000.txt");
+		GenerateStopwords stopw = new GenerateStopwords();
+		stopw.generatefromfile("stopwords.txt");
 		while(true){
+			System.out.print("Enter your query:>");
 			String str=reader.readLine();
 			if(str.equals("0")) break;
 			long start=System.currentTimeMillis();
@@ -66,7 +69,7 @@ public class WikiSearch {
 			for(char g2: str.toCharArray())
 			{
 						
-				if(g2!=':' && htest == 1)
+				if(g2!=':' )
 				{
 
 					g1=g1+""+g2;
@@ -79,24 +82,48 @@ public class WikiSearch {
 						g1=g1.toLowerCase();
 						String[] yt = g1.split("\\s+");
 						List<String> tfr = new LinkedList<String>();
+						Set<String> tr1 = new HashSet<String>();
+						if(tr.equals(""))
+            			{
+            					tr1.add("b");
+            					tr1.add("i");
+            					tr1.add("c");
+            					tr1.add("t");
+            					tr1.add("l");
+            					tr1.add("r");
+            			}
+            			else
+            				tr1.add(tr);
+            			for(String trf: tr1)
+            				{
+            				boolean fist = true;
 						for(String yr: yt)
 						{
+							String p2 = yr;
 							stemf.add(yr.toCharArray(), yr.length());
             				stemf.stem();
             				yr = stemf.toString();
             				stemf.clear();
+            				if(stopw.checkStopWord(yr) || stopw.checkStopWord(p2))
+            					continue;
+            				tr=trf;
 							set.add(yr+"$"+tr.toUpperCase());
 							if(!vset.containsKey(yr+"$"+tr.toUpperCase()))
 								vset.put(yr+"$"+tr.toUpperCase(),1);
 							else
 								vset.put(yr+"$"+tr.toUpperCase(),vset.get(yr+"$"+tr.toUpperCase())+1);
-							tfr.add(yr);
+							if(fist)
+							{
+								fist=false;
+								tfr.add(yr);
+							}
+						
 						}
+					}
 						query.put(tr,tfr);
 					}
 					tr = ""+fd;
 					g1="";
-					htest=1;
 				}
 				fd=""+g2;
 			}
@@ -113,31 +140,55 @@ public class WikiSearch {
 						stemf.clear();
 						String[] yt = g1.split("\\s+");
 						List<String> tfr = new LinkedList<String>();
+						Set<String> tr1 = new HashSet<String>();
+						if(tr.equals(""))
+            			{
+            					tr1.add("b");
+            					tr1.add("t");
+            			}
+            			else
+            				tr1.add(tr);
+            			for(String trf: tr1)
+            			{
+            			boolean fist = true;
 						for(String yr: yt)
 						{
+							String p2=yr;
 							stemf.add(yr.toCharArray(), yr.length());
             				stemf.stem();
             				yr = stemf.toString();
             				stemf.clear();
+     					if(stopw.checkStopWord(yr) || stopw.checkStopWord(p2))
+            					continue;
+            				tr=trf;
 							set.add(yr+"$"+tr.toUpperCase());
 							if(!vset.containsKey(yr+"$"+tr.toUpperCase()))
 								vset.put(yr+"$"+tr.toUpperCase(),1);
 							else
 								vset.put(yr+"$"+tr.toUpperCase(),vset.get(yr+"$"+tr.toUpperCase())+1);
-					
-							tfr.add(yr);
+							if(fist)
+							{
+								fist=false;
+								tfr.add(yr);
+							}
+							query.put(tr,tfr);
 						}
-						query.put(tr,tfr);
-					}
+						}
+				}
+			//System.out.println(g1);
 			HashMap<String,Integer> hp = new HashMap<String,Integer>();
 			int co=0;
 			for(String s:set)
 			{
-				System.out.println(s);
+			//	System.out.println(s);
 				hp.put(s,co);
 				co++;
 			}
+//System.out.println("asads");
+						
 			TreeMap<String,String> tre = g.run(set);
+			//System.out.println("asads");
+						
 			ArrayList<Double> parr1 = new ArrayList<Double>(set.size());
 			for (int i = 0; i < set.size(); i++) {
   							parr1.add(0.0);
@@ -170,8 +221,8 @@ public class WikiSearch {
 					vect.put(doc_id,arr1);
 				}
 				parr1.set(hp.get(r1),Math.log(1.0+(NUMBERDOC*1.0)/(ndoc*1.0))*(1.0+Math.log(vset.get(r1))));
-				//	System.out.println(vect.toString());
-				//	System.out.println(parr1.toString());
+					//System.out.println(vect.toString());
+					//System.out.println(parr1.toString());
 				
 			}
 			HashMap<String,Double> finalv = new HashMap<String,Double>(); 
@@ -186,12 +237,26 @@ public class WikiSearch {
 			//	System.out.println(cosinevalue.toString());
 			}
 			HashMap<String,Double> sfinal = sortByfValue(finalv);
-			int countg=15;
-			for(Map.Entry<String, Double> r: sfinal.entrySet())
+			List<String> set2 = new LinkedList<String>();
+			
+			int countg=10;
+			Set<String> keys = sfinal.keySet();
+			String[] keysArray = keys.toArray(new String[keys.size()]);
+			for(int i=0;i<keysArray.length && i<10;i++)
 			{
-				if(countg>0)
-				System.out.println(r.getKey());
-			countg-=1;
+				set2.add(keysArray[i]);
+			}
+			//System.out.println("asads");
+			TreeMap<String,String> docf = g.fetchDocTitle(set2);
+			int ycount=0;
+			for(String s:set2)
+			{
+				if(docf.containsKey(s))
+				{
+					ycount++;
+					System.out.print(String.valueOf(ycount)+"-> ");	
+					System.out.println(docf.get(s));
+				}			
 			}
 			System.out.println("total "+((System.currentTimeMillis()-start))+" ms");
 		}

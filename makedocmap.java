@@ -15,7 +15,7 @@ import java.time.Instant;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 import java.util.regex.Pattern;
-public class indexer {
+public class makedocmap {
    public static HashMap<String,Integer> tf=new HashMap<String,Integer>();
    public static HashMap<String,Integer> idf=new HashMap<String,Integer>(); 
    public static HashMap<String,Integer> mat=new HashMap<String,Integer>(); 
@@ -33,68 +33,7 @@ public class indexer {
          UserHandler userhandler = new UserHandler();
          userhandler.sample(tf, idf, indexer, bodyText);
          saxParser.parse(inputFile, userhandler);    
-         Map<String,Integer> idf_sorted = sortByValue(idf);
-         Map<String,Integer> tf_sorted = sortByValue(tf);
-         for(Map.Entry m:idf.entrySet()){  
-         Integer s1=(Integer) tf.get(m.getKey());
-         Integer s2 =(Integer) m.getValue();
-         Integer s3=s1*s2;
-            mat.put((String)m.getKey(),s3);
-         }  
-      Map<String,Integer> mat_sorted = sortByValue(mat);
-      File statText = new File(args[1]);
-      FileOutputStream is = new FileOutputStream(statText);
-      OutputStreamWriter osw = new OutputStreamWriter(is);    
-      Writer w = new BufferedWriter(osw);
-
-      //for(Map.Entry m:mat_sorted.entrySet()){  
-       //
-                  ////System.out.println(m.getKey()+" "+m.getValue());  
-      //}
-      if(indexer.size()!=0)
-            {
-              try {
-                SPIMI_ALGO.createblock(indexer);
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-                indexer.clear();
-            }
-       // SPIMI_ALGO.mergeblocks();
-      String key2 = "%$%";
-      boolean firstline = true;
-      for(Map.Entry<String, SortedSet<Pair<Integer, String>>> entry : indexer.entrySet()) {
-         String key = entry.getKey();
-         valcategory = key;
-         //if(!firstline && keycheck(key,key2)==false)
-          if(!firstline)
-            w.write("\n");
-         firstline=false; 
-         SortedSet<Pair<Integer, String>> pr2 = entry.getValue();
-         w.write(valcategory + ":");
-         //for(Map.Entry<Integer, SortedSet<Pair<Integer, String>>> entry2 : value.entrySet()) 
-         //{
-            //Integer doc = entry2.getKey();
-            //w.write(doc.toString() + ":");
-           // SortedSet<Pair<Integer, String>> pr2 = entry.getValue();
-            boolean ft=true;
-            String dq="";
-            for (Pair<Integer, String> pr:pr2)
-            {
-               Integer in = pr.getFirst();
-               String qr = pr.getSecond();
-               if(!ft)
-                  dq=",";
-               w.write(dq+in.toString()+"-"+qr); 
-              ft=false;
-            }
-            key2=key; 
-          //   w.write(";"); 
-         //}
-              
-      }
-      w.close();
-      Instant end = Instant.now();
+        Instant end = Instant.now();
       Duration timeElapsed = Duration.between(start, end);
       System.out.println("Time taken: "+ timeElapsed.toMillis() +" milliseconds");
       ////System.out.println(indexer);  
@@ -185,14 +124,24 @@ class UserHandler extends DefaultHandler {
    Integer id=-1;
    Integer numberword = 0;
    GenerateStopwords stopw = new GenerateStopwords();
-   int counter=1;
-   public void sample(HashMap<String,Integer> tf,HashMap<String,Integer> idf,TreeMap<String, SortedSet<Pair<Integer, String>>> indexer, StringBuffer bfr){
+   FileOutputStream is;
+OutputStreamWriter osw;
+Writer w;
+	File statText;   
+	int counter=1;
+   public void sample(HashMap<String,Integer> tf,HashMap<String,Integer> idf,TreeMap<String, SortedSet<Pair<Integer, String>>> indexer, StringBuffer bfr) throws Exception{
       this.tf=tf;
       this.idf=idf;
       this.index=indexer;
       this.buffer=bfr;
       stemf = new Stemmer();
       stopw.generatefromfile("stopwords.txt");
+      statText = new File("temp/mappings2.txt");
+      statText.getParentFile().mkdirs();
+      statText.createNewFile();
+      is = new FileOutputStream(statText);
+      osw = new OutputStreamWriter(is);    
+      w = new BufferedWriter(osw);
     
    }
    @Override
@@ -235,157 +184,13 @@ class UserHandler extends DefaultHandler {
       else if(tag.equalsIgnoreCase("title"))
       {
          isTitle = false;
-         String s2 = buffer.toString();
-         s2=s2.toLowerCase();
-         extractLinks(s2);
-         extractCategories(s2);
-         extractReferences(s2);
-         extractInfoBox(s2);
-         s2=deleteCitation(s2);
-         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
-         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
-         HashSet<String> parts2 = new HashSet<String>();
-         HashMap<String, Integer> countw= new HashMap<String,Integer>();
-         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
-            while(normalTokenizer.hasMoreTokens()){
-              String nk=normalTokenizer.nextToken().trim();
-               parts2.add(nk);
-               if(countw.get(nk)==null){
-                  countw.put(nk,1);
-               }
-               else{
-                  countw.put(nk,countw.get(nk)+1);
-               }
-            }
-         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
-         List<String> parts = new ArrayList<String>();
-       for(String p:parts2)
-         {
-            Matcher m = rp.matcher(p);
-         if (m.find())
-            parts.add(p);
-         }
-
-         ////System.out.println(parts.toString());
-         for(String p:parts){
-            String p2=p;
-            stemf.add(p.toCharArray(), p.length());
-            stemf.stem();
-            p = stemf.toString();
-          
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2))
-            {
-              String p3=p;
-               p = p + "$T";
-              //System.out.println(p+ " ");
-               if(!index.containsKey(p)) 
-            {
-                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
-                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
-                  ls.add(r);
-                 // index.put(id,ls);
-                  index.put(p,ls);
-               }
-               else{
-              
-                     SortedSet<Pair<Integer,String>> ls = index.get(p);
-                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
-                     
-                     ls.add(r);
-                  //   f.put(id,ls);
-                     index.put(p,ls);
-                  }
-               }
-                numberword++;
-                   
-            }
-            if(index.size()>=1000000)
-            {
-              try {
-                SPIMI_ALGO.createblock(index);
-              } catch (Exception e) {
-                e.printStackTrace();
-              }
-                index.clear();
-            }
       }
       else if(tag.equalsIgnoreCase("text"))
       {
         //System.out.println(String.valueOf(index.size()));
          isBody = false;
-         String s2 = buffer.toString();
-         s2=s2.toLowerCase();
-         extractLinks(s2);
-         extractCategories(s2);
-         extractReferences(s2);
-         extractInfoBox(s2);
-         s2=deleteCitation(s2);
-         String PATTERN_TOKEN = "\\$%{}[]()`<>='&:,;/.~ ;*\n|\"^_-+!?#\t@";
-         //String s1 = s2.replaceAll("[-:()/^[!|=,?._'{}@+\\[\\]]]", " ");
-         HashSet<String> parts2 = new HashSet<String>();
-         HashMap<String, Integer> countw= new HashMap<String,Integer>();
-         final StringTokenizer normalTokenizer = new StringTokenizer(s2,PATTERN_TOKEN);
-            while(normalTokenizer.hasMoreTokens()){
-              String nk=normalTokenizer.nextToken().trim();
-               parts2.add(nk);
-               if(countw.get(nk)==null){
-                  countw.put(nk,1);
-               }
-               else{
-                  countw.put(nk,countw.get(nk)+1);
-               }
-            }
-         Pattern rp = Pattern.compile("^[a-zA-Z0-9]*$");
-         List<String> parts = new ArrayList<String>();
-       for(String p:parts2)
-         {
-            Matcher m = rp.matcher(p);
-         if (m.find())
-            parts.add(p);
-         }
-
-         ////System.out.println(parts.toString());
-         for(String p:parts){
-            String p2=p;
-            stemf.add(p.toCharArray(), p.length());
-            stemf.stem();
-            p = stemf.toString();
-          
-            if(p.length()>0 && !stopw.checkStopWord(p) && !stopw.checkStopWord(p2) && p.charAt(0)!='0')
-            {
-              String p3=p;
-               p = p + "$B";
-              //System.out.println(p+ " ");
-               if(!index.containsKey(p)) 
-            {
-                  Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
-                  SortedSet<Pair<Integer,String>> ls = new TreeSet<Pair<Integer,String>>();
-                  ls.add(r);
-                 // index.put(id,ls);
-                  index.put(p,ls);
-               }
-               else{
-              
-                     SortedSet<Pair<Integer,String>> ls = index.get(p);
-                     Pair<Integer,String> r = new Pair<Integer,String>(id,String.valueOf(countw.get(p2)));
-                     
-                     ls.add(r);
-                  //   f.put(id,ls);
-                     index.put(p,ls);
-                  }
-               }
-                numberword++;
-                   
-            }
-             if(index.size()>=500000)
-            {
-              try {
-                SPIMI_ALGO.createblock(index);
-              } catch (Exception e) {
-                e.printStackTrace();
-              }
-                index.clear();
-            }
+     	  System.out.println(String.valueOf(id));
+        
          ////System.out.println(String.valueOf(id));
       }
    }
@@ -396,11 +201,10 @@ class UserHandler extends DefaultHandler {
       if (isTitle) {
          String s2 = new String(ch, start, length);
          buffer.append(s2);
+	
        //  ////System.out.println("Title: " 
          //   + new String(ch, start, length));
       } else if (isBody) {
-          String s2 = new String(ch, start, length);
-         buffer.append(s2);
          
       } else if (isRevision) {
      //    ////System.out.println("Revision: " + new String(ch, start, length));
