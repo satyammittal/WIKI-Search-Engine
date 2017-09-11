@@ -198,7 +198,6 @@ class UserHandler extends DefaultHandler {
    @Override
    public void startElement(String uri, 
    String localName, String qName, Attributes attributes) throws SAXException {
-      counter++;
    //      ////System.out.println("Roll No : " + qName);
       if (qName.equalsIgnoreCase("revision")) {
          isRevision = true;
@@ -297,7 +296,7 @@ class UserHandler extends DefaultHandler {
                 numberword++;
                    
             }
-            if(index.size()>=500000)
+            if(index.size()>=50000)
             {
               try {
                 SPIMI_ALGO.createblock(index);
@@ -403,9 +402,11 @@ class UserHandler extends DefaultHandler {
       } else if (isRevision) {
      //    ////System.out.println("Revision: " + new String(ch, start, length));
       } else if (isId && !isRevision) {
+             counter++;
           String s2 = new String(ch, start, length);
          s2=s2.toLowerCase();
          id=Integer.valueOf(s2);
+        
          //////System.out.println(s2);
         
       }

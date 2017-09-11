@@ -126,7 +126,19 @@ public class SPIMI_ALGO {
    {
    		File folder = new File("temp/");
    		File[] listOfFiles = folder.listFiles();
-   		String gh=""; 
+   		
+      Arrays.sort(listOfFiles, new Comparator<File>(){
+        @Override
+        public int compare(File f1, File f2) {
+            String s1 = f1.getName().substring(f1.getName().indexOf("-")+1,f1.getName().indexOf("."));
+            String s2 = f2.getName().substring(f2.getName().indexOf("-")+1,f2.getName().indexOf("."));
+            return Integer.valueOf(s1).compareTo(Integer.valueOf(s2));  
+        }
+      });
+           for(File t:listOfFiles)
+          System.out.println(t.getName());
+   
+      String gh=""; 
    		while(listOfFiles.length>=2)
    		{
    			gh+="0";
@@ -134,7 +146,7 @@ public class SPIMI_ALGO {
    			tempnumber = subfilenumber%1;
    			for(int i=0;i<r;i++)
    			{
-   						File filepath1=listOfFiles[i] ;
+   						File filepath1=listOfFiles[2*i] ;
                         File filepath2=listOfFiles[2*i+1] ;
                         System.out.println(filepath1 +" "+filepath2);
                         try {
@@ -201,6 +213,16 @@ public class SPIMI_ALGO {
                         filepath2.delete();
    			}
    			listOfFiles = folder.listFiles();
+        Arrays.sort(listOfFiles, new Comparator<File>(){
+        @Override
+        public int compare(File f1, File f2) {
+            String s1 = f1.getName().substring(f1.getName().indexOf("-")+1,f1.getName().indexOf("."));
+            String s2 = f2.getName().substring(f2.getName().indexOf("-")+1,f2.getName().indexOf("."));
+            return Integer.valueOf(s1).compareTo(Integer.valueOf(s2));  
+        }
+        });
+        for(File t:listOfFiles)
+          System.out.println(t.getName());
    		}
    }
 }
